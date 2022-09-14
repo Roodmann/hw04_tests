@@ -31,6 +31,31 @@ class PostPagesTests(TestCase):
             self.assertEqual(context.author, self.post.author)
             self.assertEqual(context.group.id, self.post.group.id)
 
+    def test_pages_uses_correct_template(self):
+        """URL-адрес использует соответствующий шаблон."""
+        templates_url_names = {
+            reverse(
+                'posts:home'): 'posts/index.html',
+            reverse(
+                'posts:group_list',
+                kwargs={'slug': self.group.slug}): 'posts/group_list.html',
+            reverse(
+                'posts:profile',
+                kwargs={'username': 'Name'}): 'posts/profile.html',
+            reverse(
+                'posts:post_detail',
+                kwargs={'post_id': self.post.id}): 'posts/post_detail.html',
+            reverse(
+                'posts:post_edit',
+                kwargs={'post_id': self.post.id}): 'posts/post_create.html',
+            reverse(
+                'posts:create'): 'posts/post_create.html',
+        }
+        for adress, template in templates_url_names.items():
+            with self.subTest(adress=adress):
+                response = self.authorized_client.get(adress)
+                self.assertTemplateUsed(response, template)
+
     def test_home_page_show_correct_context(self):
         """Шаблон home.html сформирован с правильным контекстом."""
         response = self.authorized_client.get(reverse('posts:home'))
@@ -76,12 +101,13 @@ class PaginatorViewsTest(TestCase):
             slug='test_slug',
             description='Тестовое описание группы',
         )
+        cls.test_posts = []
         for i in range(13):
-            Post.objects.create(
-                text=f'Пост #{i}',
-                author=cls.user,
-                group=cls.group
-            )
+            cls.test_posts.append(Post(
+                text=f'Тестовый пост №{i}',
+                group=cls.group,
+                author=cls.user))
+        Post.objects.bulk_create(cls.test_posts)
 
     def setUp(self):
         self.unauthorized_client = Client()

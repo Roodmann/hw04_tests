@@ -16,8 +16,14 @@ class PostFormTests(TestCase):
             slug='test-slug',
             description='Тестовое описание группы',
         )
+        cls.group_2 = Group.objects.create(
+            title='Тестовое название группы 2',
+            slug='test-slug2',
+            description='Тестовое описание группы 2'
+        )
 
     def setUp(self):
+        self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
@@ -47,28 +53,32 @@ class PostFormTests(TestCase):
 
     def test_user_edit_post(self):
         """Проверка редактирования записи пользователем."""
-        post = Post.objects.create(
+        self.post = Post.objects.create(
             text='Текст поста для редактирования',
             author=self.user,
             group=self.group,
         )
         form_data = {
             'text': 'Отредактированный текст поста',
-            'group': self.group.id,
+            'group': self.group_2.id,
         }
         response = self.authorized_client.post(
             reverse(
                 'posts:post_edit',
-                args=[post.id]),
+                kwargs={'post_id': self.post.id}),
             data=form_data,
             follow=True
         )
         self.assertRedirects(
             response,
-            reverse('posts:post_detail', kwargs={'post_id': post.id})
+            reverse('posts:post_detail', kwargs={'post_id': self.post.id})
         )
         self.assertEqual(response.status_code, HTTPStatus.OK)
         post = Post.objects.latest('id')
         self.assertTrue(post.text == form_data['text'])
         self.assertTrue(post.author == self.user)
         self.assertTrue(post.group_id == form_data['group'])
+        self.assertTrue(Post.objects.filter(id=self.post.id,
+                                            group=self.group_2.id,
+                                            author=self.user,
+                                            ).exists())
